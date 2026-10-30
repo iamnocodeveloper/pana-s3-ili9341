@@ -169,7 +169,6 @@ sequenceDiagram
 | [`docs/caja.md`](docs/caja.md) | El plano de la caja de cartón duro, a escala 1:1. |
 | [`docs/audio.md`](docs/audio.md) | Micrófono y altavoz: qué comprar y a qué pines. |
 | [`docs/avatar-propio.md`](docs/avatar-propio.md) | Cómo hacer tu propio avatar a partir de una imagen. |
-| [`docs/hermes-vps.md`](docs/hermes-vps.md) | Hermes Agent en una VPS y el túnel SSH desde tu PC. |
 | [`CAMBIOS.md`](CAMBIOS.md) | Lista de cambios sobre el original. |
 | Del proyecto original | [README de Erik](README.erik.md) · [protocolo](protocol/PROTOCOL.md) · [hardware](docs/hardware.md) |
 

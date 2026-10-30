@@ -10,3 +10,4 @@ firmware/include/secrets.h
 avatar/
 *.ppm
 .DS_Store
+tunel-hermes.bat
