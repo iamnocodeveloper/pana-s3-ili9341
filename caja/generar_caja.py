@@ -1,13 +1,14 @@
 """Plano 1:1 de la caja de cartón duro de Pana (ESP32-S3 + pantalla ILI9341 de 3,2").
 
 Saca caja/caja-plano.html: abre ese archivo en el navegador e imprime en A4 horizontal al 100 % (sin «ajustar a
-la página»). Cada hoja trae una regla de 100 mm para comprobar que salió a escala. Recorta las piezas de papel,
+la página»). Cada hoja trae una regla de 10 cm para comprobar que salió a escala. Recorta las piezas de papel,
 calca sobre el cartón y corta.
 
 Para otras medidas:  python generar_caja.py --pcb-w 87 --pcb-h 56 --ventana-w 62 --ventana-h 46 --fondo 50
-Todas las medidas son milímetros.
+Las opciones van en milímetros; el plano muestra las medidas en centímetros (el dibujo es 1:1).
 """
 import argparse
+import math
 from pathlib import Path
 
 ap = argparse.ArgumentParser()
@@ -27,6 +28,9 @@ ap.add_argument("--fondo", type=float, default=50, help="profundidad interior: p
 ap.add_argument("--usb-w", type=float, default=32, help="ancho de la ranura de los USB-C")
 ap.add_argument("--usb-h", type=float, default=9, help="alto de la ranura de los USB-C")
 ap.add_argument("--usb-x", type=float, default=0, help="posición de la ranura desde el centro de la pieza ABAJO (+ derecha)")
+ap.add_argument("--altavoz", action="store_true",
+                help="agujeros del altavoz de 40 mm en el FONDO y del micrófono en ARRIBA (usa --fondo 55)")
+ap.add_argument("--altavoz-x", type=float, default=0, help="centro del altavoz desde la izquierda del FONDO (0 = a un cuarto del ancho)")
 ap.add_argument("--sin-pata", action="store_true", help="no dibujar la pata para que se apoye inclinada")
 a = ap.parse_args()
 
@@ -39,13 +43,19 @@ if a.centrada:
     wi = max(wi, 2 * a.pcb_w - a.ventana_w - 2 * a.margen_vidrio + 2 * a.holgura)
 wo, ho = wi + 2 * t, hi + 2 * t                              # exterior
 d = a.fondo
+fondo_ad, arriba_ad = [], []
+if a.altavoz:
+    ax = a.altavoz_x or wo / 4                       # el altavoz de 40 mm (mirando hacia fuera) pegado por dentro
+    fondo_ad = [("guia", ax, ho / 2, 20, "ALTAVOZ Ø40 · pegar por dentro")]
+    fondo_ad += [("circ", ax, ho / 2, 1.6, "")] + [("circ", ax + 12 * math.cos(k * math.pi / 4), ho / 2 + 12 * math.sin(k * math.pi / 4), 1.6, "") for k in range(8)]
+    arriba_ad = [("circ", wo / 2, 10, 1.6, "MIC Ø3 · micrófono pegado por debajo")]    # a 10 mm del frente
 
 # pieza: nombre, cuántas, ancho, alto, adornos (se dibujan dentro de la pieza)
 piezas = [
     ("FRENTE", 1, wo, ho, [("rect", (wo - a.ventana_w) / 2 + a.ventana_dx, (ho - a.ventana_h) / 2 + a.ventana_dy,
                             a.ventana_w, a.ventana_h, "VENTANA")]),
-    ("FONDO", 1, wo, ho, []),
-    ("ARRIBA", 1, wo, d, []),
+    ("FONDO", 1, wo, ho, fondo_ad),
+    ("ARRIBA", 1, wo, d, arriba_ad),
     ("ABAJO", 1, wo, d, [("rect", (wo - a.usb_w) / 2 + a.usb_x, d - a.usb_h - 0.0, a.usb_w, a.usb_h, "USB")]),
     ("LADO", 2, ho - 2 * t, d, []),
     ("TOPE", 4, 12, 12, []),
@@ -96,12 +106,21 @@ def svg_hoja(num, total, hoja):
                     s.append(f'<rect x="{rx:.2f}" y="{ry:.2f}" width="{rw:.2f}" height="{rh:.2f}" fill="#fde2e2" '
                              f'stroke="#d00" stroke-width="0.4"/>')
                     s.append(f'<text x="{rx + rw / 2:.2f}" y="{ry + rh / 2 + 1:.2f}" font-size="3" text-anchor="middle" '
-                             f'fill="#d00">CORTAR {et} {rw:.0f}×{rh:.0f}</text>')
+                             f'fill="#d00">CORTAR {et} {cm(rw)}×{cm(rh)} cm</text>')
+                elif kind == "circ":
+                    cx, cy, r, et = p
+                    s.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r}" fill="#fde2e2" stroke="#d00" stroke-width="0.4"/>')
+                    if et:
+                        s.append(f'<text x="{cx:.2f}" y="{cy + 6:.2f}" font-size="2.4" text-anchor="middle" fill="#d00">{et}</text>')
+                elif kind == "guia":
+                    cx, cy, r, et = p
+                    s.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r}" fill="none" stroke="#06c" stroke-width="0.3" stroke-dasharray="1.5,1"/>')
+                    s.append(f'<text x="{cx:.2f}" y="{cy + r + 4:.2f}" font-size="2.6" text-anchor="middle" fill="#06c">{et}</text>')
         et = f"{nombre}" + (f" ({i}/{n})" if n > 1 else "")
         anchor = "middle" if not (ad and ad[0][0] == "tri") else "start"
         if w >= 20:
             s.append(f'<text x="{tx:.2f}" y="{ty:.2f}" font-size="3.4" font-weight="bold" text-anchor="{anchor}">{et}</text>')
-            s.append(f'<text x="{tx:.2f}" y="{ty + 3.6:.2f}" font-size="2.8" text-anchor="{anchor}" fill="#555">{w:.0f} × {h:.0f} mm</text>')
+            s.append(f'<text x="{tx:.2f}" y="{ty + 3.6:.2f}" font-size="2.8" text-anchor="{anchor}" fill="#555">{cm(w)} × {cm(h)} cm</text>')
         else:
             s.append(f'<text x="{w / 2:.2f}" y="{h / 2 + 1:.2f}" font-size="2.4" text-anchor="middle" fill="#555">T</text>')
         s.append('</g>')
@@ -109,23 +128,28 @@ def svg_hoja(num, total, hoja):
     s.append(f'<line x1="{M}" y1="{ry}" x2="{M + 100}" y2="{ry}" stroke="#000" stroke-width="0.4"/>')
     for k in range(0, 101, 10):
         s.append(f'<line x1="{M + k}" y1="{ry - 1.5}" x2="{M + k}" y2="{ry + 1.5}" stroke="#000" stroke-width="0.3"/>')
-    s.append(f'<text x="{M + 104}" y="{ry + 1}" font-size="3">← esto debe medir 100 mm con regla · hoja {num}/{total}</text>')
+    s.append(f'<text x="{M + 104}" y="{ry + 1}" font-size="3">← esto debe medir 10 cm con regla · hoja {num}/{total}</text>')
     s.append('</svg>')
     return "\n".join(s)
+
+
+def cm(v):
+    """Milímetros → texto en centímetros, con coma decimal."""
+    return f"{v / 10:.2f}".rstrip("0").rstrip(".").replace(".", ",")
 
 
 hojas = colocar()
 paginas = "\n".join(f'<section class="hoja">{svg_hoja(i + 1, len(hojas), h)}</section>' for i, h in enumerate(hojas))
 instrucciones = f"""
-<section class="info"><h1>Caja de Pana · cartón duro de {t:g} mm</h1>
+<section class="info"><h1>Caja de Pana · cartón duro de {cm(t)} cm</h1>
 <p><b>Imprime estas hojas en A4 horizontal al 100 %</b> (en el diálogo de impresión, «Escala: 100 %», no «Ajustar»).
-Comprueba con una regla que la barra de cada hoja mide 100 mm.</p>
+Comprueba con una regla que la barra de cada hoja mide 10 cm.</p>
 <h2>Medidas</h2>
-<ul><li>Interior: {wi:.1f} × {hi:.1f} × {d:g} mm (placa {a.pcb_w:g} × {a.pcb_h:g} + {a.holgura:g} mm de aire por lado)</li>
-<li>Exterior: {wo:.1f} × {ho:.1f} × {d + 2 * t:g} mm</li>
-<li>Ventana: {a.ventana_w:g} × {a.ventana_h:g} mm ({'centrada' if a.centrada else 'desplazada ' + format(a.ventana_dx, 'g') + ' mm'}; bordes izq/der {(wo - a.ventana_w) / 2 + a.ventana_dx:.1f} / {(wo - a.ventana_w) / 2 - a.ventana_dx:.1f} mm, arriba/abajo {(ho - a.ventana_h) / 2 + a.ventana_dy:.1f} / {(ho - a.ventana_h) / 2 - a.ventana_dy:.1f} mm)</li></ul>
+<ul><li>Interior: {cm(wi)} × {cm(hi)} × {cm(d)} cm (placa {cm(a.pcb_w)} × {cm(a.pcb_h)} + {cm(a.holgura)} cm de aire por lado)</li>
+<li>Exterior: {cm(wo)} × {cm(ho)} × {cm(d + 2 * t)} cm</li>
+<li>Ventana: {cm(a.ventana_w)} × {cm(a.ventana_h)} cm ({'centrada' if a.centrada else 'desplazada ' + cm(a.ventana_dx) + ' cm'}; bordes izq/der {cm((wo - a.ventana_w) / 2 + a.ventana_dx)} / {cm((wo - a.ventana_w) / 2 - a.ventana_dx)} cm, arriba/abajo {cm((ho - a.ventana_h) / 2 + a.ventana_dy)} / {cm((ho - a.ventana_h) / 2 - a.ventana_dy)} cm)</li></ul>
 <h2>Armado</h2>
-<ol><li>Calca y corta todas las piezas. Las zonas rojas (VENTANA y USB) también se cortan.</li>
+<ol><li>Calca y corta todas las piezas. Las zonas rojas (VENTANA, USB y agujeros) también se cortan; el círculo azul solo guía dónde pegar el altavoz.</li>
 <li>Pega la pantalla por detrás del <b>FRENTE</b> con la zona iluminada centrada en la ventana. Fíjala con 4 TOPES en las esquinas (cinta de doble cara o pegamento caliente).</li>
 <li>Con todos los cables ya conectados y probados, sujeta el ESP32 al <b>FONDO</b> con pegamento caliente, con los USB-C hacia la ranura de <b>ABAJO</b>.</li>
 <li>Pega <b>ARRIBA</b>, <b>ABAJO</b> y los dos <b>LADOS</b> entre el frente y el fondo (las uniones a tope se refuerzan con cinta por dentro).</li>
@@ -146,6 +170,6 @@ svg {{ display: block }}
 {paginas}
 </body></html>"""
 
-out = Path(__file__).with_name("caja-plano.html")
+out = Path(__file__).with_name("caja-plano-audio.html" if a.altavoz else "caja-plano.html")
 out.write_text(html, encoding="utf-8")
 print(f"{out} · {len(hojas)} hoja(s) · interior {wi:.1f}x{hi:.1f}x{d:g} · exterior {wo:.1f}x{ho:.1f}x{d + 2 * t:g}")
