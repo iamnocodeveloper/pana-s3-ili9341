@@ -1,6 +1,6 @@
 """Botones de la placa para abrir apps en este ordenador.
 
-Solo se abre lo que está en launcher.json (hasta 8 entradas; la placa muestra 4 en la página principal y todas en la de Apps): cualquier dispositivo de la red puede hablar con el
+Solo se abre lo que está en launcher.json (hasta 12 entradas): cualquier dispositivo de la red puede hablar con el
 servidor, así que la placa nunca manda una ruta ni una orden, solo el id de un botón de esa lista. Cada entrada
 lleva «id», «label» y una de estas dos:
   · "url":  una página web (http o https), se abre en el navegador por defecto
@@ -15,7 +15,7 @@ from pathlib import Path
 
 log = logging.getLogger("lanzador")
 ARCHIVO = Path(__file__).resolve().parent.parent / "launcher.json"
-MAX_BOTONES = 8
+MAX_BOTONES = 12
 
 
 def _leer() -> list[dict]:

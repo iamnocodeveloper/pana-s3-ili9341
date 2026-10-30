@@ -24,9 +24,10 @@ struct AgendaItem { String h, fin, title; bool now = false; };
 struct Dash {
     bool have = false;
     float cpu = 0, gpu = -1, ram = 0, ramGb = 0, ramTotal = 0, temp = -1;   // ram en %, ramGb y ramTotal en GB
-    String appId[8], appLabel[8];      // botones para abrir apps (launcher.json del servidor)
+    String appId[12], appLabel[12];      // botones para abrir apps (launcher.json del servidor)
     int nApps = 0;
     int wins = -1;                     // ventanas de navegador abiertas (-1 = no se sabe)
+    String frase, verso, cita;         // la frase del día y el versículo (los escribe Hermes)
     String up, host, brain;            // brain: «hermes» o «local» (COMPANION_BRAIN del servidor)
     String svcName[6];
     bool svcOk[6] = {};

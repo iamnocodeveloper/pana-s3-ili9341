@@ -26,7 +26,7 @@ try:
 except ImportError:
     psutil = None
 
-from brain import lanzador
+from brain import frases, lanzador
 from config import cfg
 
 log = logging.getLogger("tablero")
@@ -360,6 +360,7 @@ async def vigilar(hub, cada_s: float = CADA_S):
                         k = "subs" if nombre == "yt" else "followers"
                         v["d"] = deldia.delta(nombre, v[k])
                         redes[nombre] = v
+                frases.tick()
                 usada, total = _ram()
                 svc = await asyncio.gather(*(_vivo(c, u) for _, u in _servicios()))
                 await hub.emitir({
@@ -367,6 +368,7 @@ async def vigilar(hub, cada_s: float = CADA_S):
                     "sys": {"cpu": cpu.uso(), "gpu": _gpu(), "ram": round(100 * usada / total, 1) if total else 0,
                             "ram_gb": usada, "ram_total": total, "temp": _temp(), "ventanas": _ventanas_navegador(), "up": _uptime(), "host": os.environ.get("HOMELAB_NAME", socket.gethostname())},
                     "brain": cfg.brain,
+                    "frase": frases.actual(),
                     "apps": lanzador.lista(),
                     "svc": [[n, ok] for (n, _), ok in zip(_servicios(), svc)],
                     "agenda": _agenda_para_placa(agenda),
