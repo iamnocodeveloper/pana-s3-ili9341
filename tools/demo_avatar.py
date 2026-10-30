@@ -32,25 +32,26 @@ F = 0.82                    # escala del dibujo alrededor de los pies (cabe en ~
 class Escalado:
     """ImageDraw con las coordenadas escaladas F alrededor de (60, 150): se dibuja en «unidades» de
     120x160 y el robot sale más pequeño, con los pies en el mismo sitio."""
-    def __init__(self, d):
+    def __init__(self, d, f=None):
         self.d = d
+        self.f = F if f is None else f
 
     def _p(self, v):
         if isinstance(v, (list, tuple)) and v and isinstance(v[0], (list, tuple)):
             return [self._p(x) for x in v]
         if isinstance(v, (list, tuple)) and len(v) == 4 and not isinstance(v[0], (list, tuple)):
-            return [round(60 + (v[0] - 60) * F), round(150 + (v[1] - 150) * F),
-                    round(60 + (v[2] - 60) * F), round(150 + (v[3] - 150) * F)]
-        return (round(60 + (v[0] - 60) * F), round(150 + (v[1] - 150) * F))
+            return [round(60 + (v[0] - 60) * self.f), round(150 + (v[1] - 150) * self.f),
+                    round(60 + (v[2] - 60) * self.f), round(150 + (v[3] - 150) * self.f)]
+        return (round(60 + (v[0] - 60) * self.f), round(150 + (v[1] - 150) * self.f))
 
     def __getattr__(self, name):
         f = getattr(self.d, name)
 
         def g(xy, *a, **kw):
             if "width" in kw and kw["width"] > 1:
-                kw["width"] = max(1, round(kw["width"] * F))
+                kw["width"] = max(1, round(kw["width"] * self.f))
             if name == "rounded_rectangle" and a:
-                a = (max(1, round(a[0] * F)),) + a[1:]
+                a = (max(1, round(a[0] * self.f)),) + a[1:]
             return f(self._p(xy), *a, **kw)
         return g
 
@@ -105,56 +106,8 @@ def arm(d, x0, y0, x1, y1):
     d.ellipse([x1 - 5, y1 - 5, x1 + 5, y1 + 5], fill=BODY, outline=OUT, width=2)
 
 
-def frame(st, k, n):
-    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = Escalado(ImageDraw.Draw(im))
-    acc = ACCENT[st]
-    t = k / n
-    bob = 0 if st in ("error", "sleeping") else round(1.2 * math.sin(t * 2 * math.pi))
-    if st == "success":
-        bob = -abs(round(3 * math.sin(t * 4 * math.pi)))
-    dy = bob
-    # piernas y pies (no se mueven: así no baila)
-    for x in (44, 66):
-        rr(d, [x, 126, x + 10, 146], 3, SHADE)
-        rr(d, [x - 4, 142, x + 14, 150], 3, BODY)
-    # brazos según el estado (detrás del cuerpo los que bajan)
-    ls, rs = (36, 94 + dy), (84, 94 + dy)
-    wav = math.sin(t * 2 * math.pi * 2)
-    if st == "success":
-        arm(d, *ls, 24, 66 + dy); arm(d, *rs, 96, 66 + dy)
-    elif st == "wave":
-        arm(d, *ls, 30, 122 + dy); arm(d, *rs, 100 + round(6 * wav), 66 + dy)
-    elif st == "approval":
-        arm(d, *ls, 30, 122 + dy); arm(d, *rs, 98, 70 + dy)
-    elif st in ("reading", "typing", "searching", "executing"):
-        arm(d, *ls, 44, 116 + dy); arm(d, *rs, 76, 116 + dy)
-    elif st == "thinking":
-        arm(d, *ls, 30, 122 + dy); arm(d, *rs, 70, 76 + dy)
-    else:
-        sw = round(2 * math.sin(t * 2 * math.pi)) if st == "idle" else 0
-        arm(d, *ls, 29 - sw, 122 + dy); arm(d, *rs, 91 + sw, 122 + dy)
-    # cuerpo y pecho con su luz
-    rr(d, [36, 84 + dy, 84, 128 + dy], 10, BODY)
-    d.rectangle([76, 90 + dy, 82, 124 + dy], fill=SHADE)
-    rr(d, [49, 96 + dy, 71, 114 + dy], 4, VISOR)
-    lit = 0.5 + 0.5 * math.sin(t * 2 * math.pi * (2 if st in ("working", "executing") else 1))
-    d.rounded_rectangle([54, 102 + dy, 66, 108 + dy], 2, fill=tuple(int(c * (0.45 + 0.55 * lit)) for c in acc))
-    # cuello, cabeza, orejas y antena
-    rr(d, [54, 76 + dy, 66, 86 + dy], 2, SHADE)
-    for x in (23, 91):
-        glow = st == "listening" and (k // 2) % 2 == 0
-        rr(d, [x, 44 + dy, x + 6, 62 + dy], 2, acc if glow else SHADE)
-    rr(d, [28, 26 + dy, 92, 80 + dy], 15, BODY)
-    d.rectangle([82, 34 + dy, 88, 72 + dy], fill=SHADE)
-    rr(d, [36, 37 + dy, 84, 71 + dy], 10, VISOR)
-    d.line([(60, 26 + dy), (60, 14 + dy)], fill=OUT, width=3)
-    pulse = 3 + (1 if (st in ("listening", "working", "reconnecting") and (k // 3) % 2) else 0)
-    d.ellipse([60 - pulse, 10 + dy - pulse, 60 + pulse, 10 + dy + pulse], fill=acc, outline=OUT, width=1)
-    eyes(d, st, k, n, dy)
-    mouth(d, st, k, dy)
-
-    # accesorios
+def accesorios(d, st, k, n, t, dy, acc):
+    """Lo que sale en cada estado además del personaje (puntos de pensar, lupa, teclado…). `d` es un Escalado."""
     if st == "thinking":
         for i in range(3):
             if (k // 4) % 4 > i:
@@ -217,6 +170,58 @@ def frame(st, k, n):
             r = 6 + i * 5 + (k % 4)
             d.arc([14 - r, 53 - r, 14 + r, 53 + r], 120, 240, fill=acc, width=2)
             d.arc([106 - r, 53 - r, 106 + r, 53 + r], -60, 60, fill=acc, width=2)
+
+
+def frame(st, k, n):
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = Escalado(ImageDraw.Draw(im))
+    acc = ACCENT[st]
+    t = k / n
+    bob = 0 if st in ("error", "sleeping") else round(1.2 * math.sin(t * 2 * math.pi))
+    if st == "success":
+        bob = -abs(round(3 * math.sin(t * 4 * math.pi)))
+    dy = bob
+    # piernas y pies (no se mueven: así no baila)
+    for x in (44, 66):
+        rr(d, [x, 126, x + 10, 146], 3, SHADE)
+        rr(d, [x - 4, 142, x + 14, 150], 3, BODY)
+    # brazos según el estado (detrás del cuerpo los que bajan)
+    ls, rs = (36, 94 + dy), (84, 94 + dy)
+    wav = math.sin(t * 2 * math.pi * 2)
+    if st == "success":
+        arm(d, *ls, 24, 66 + dy); arm(d, *rs, 96, 66 + dy)
+    elif st == "wave":
+        arm(d, *ls, 30, 122 + dy); arm(d, *rs, 100 + round(6 * wav), 66 + dy)
+    elif st == "approval":
+        arm(d, *ls, 30, 122 + dy); arm(d, *rs, 98, 70 + dy)
+    elif st in ("reading", "typing", "searching", "executing"):
+        arm(d, *ls, 44, 116 + dy); arm(d, *rs, 76, 116 + dy)
+    elif st == "thinking":
+        arm(d, *ls, 30, 122 + dy); arm(d, *rs, 70, 76 + dy)
+    else:
+        sw = round(2 * math.sin(t * 2 * math.pi)) if st == "idle" else 0
+        arm(d, *ls, 29 - sw, 122 + dy); arm(d, *rs, 91 + sw, 122 + dy)
+    # cuerpo y pecho con su luz
+    rr(d, [36, 84 + dy, 84, 128 + dy], 10, BODY)
+    d.rectangle([76, 90 + dy, 82, 124 + dy], fill=SHADE)
+    rr(d, [49, 96 + dy, 71, 114 + dy], 4, VISOR)
+    lit = 0.5 + 0.5 * math.sin(t * 2 * math.pi * (2 if st in ("working", "executing") else 1))
+    d.rounded_rectangle([54, 102 + dy, 66, 108 + dy], 2, fill=tuple(int(c * (0.45 + 0.55 * lit)) for c in acc))
+    # cuello, cabeza, orejas y antena
+    rr(d, [54, 76 + dy, 66, 86 + dy], 2, SHADE)
+    for x in (23, 91):
+        glow = st == "listening" and (k // 2) % 2 == 0
+        rr(d, [x, 44 + dy, x + 6, 62 + dy], 2, acc if glow else SHADE)
+    rr(d, [28, 26 + dy, 92, 80 + dy], 15, BODY)
+    d.rectangle([82, 34 + dy, 88, 72 + dy], fill=SHADE)
+    rr(d, [36, 37 + dy, 84, 71 + dy], 10, VISOR)
+    d.line([(60, 26 + dy), (60, 14 + dy)], fill=OUT, width=3)
+    pulse = 3 + (1 if (st in ("listening", "working", "reconnecting") and (k // 3) % 2) else 0)
+    d.ellipse([60 - pulse, 10 + dy - pulse, 60 + pulse, 10 + dy + pulse], fill=acc, outline=OUT, width=1)
+    eyes(d, st, k, n, dy)
+    mouth(d, st, k, dy)
+
+    accesorios(d, st, k, n, t, dy, acc)
     return im
 
 
