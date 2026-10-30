@@ -263,3 +263,29 @@ def test_agenda_ical_de_hoy():
     ev = eventos_de_hoy(ics, date(2026, 10, 27), tz)      # martes
     assert [e["t"] for e in ev] == ["Cumple", "Stand-up", "Llamada con, Ana"]
     assert ev[1]["ini"].hour == 9 and ev[2]["ini"].hour == 11
+
+
+def test_env_quita_comentarios_al_final_de_la_linea():
+    from config import _parsear_env
+    v = _parsear_env("# un comentario\n"
+                     "COMPANION_TZ=America/Bogota            # tu zona (la hora de la placa)\n"
+                     "COMPANION_NAME=Pana\n"
+                     "VACIO=\n"
+                     "CON#ALMOHADILLA=a#b\n")
+    assert v["COMPANION_TZ"] == "America/Bogota"
+    assert v["COMPANION_NAME"] == "Pana"
+    assert v["VACIO"] == ""
+    assert v["CON#ALMOHADILLA"] == "a#b"        # sin espacio delante no es comentario
+
+
+def test_lanzador_solo_abre_lo_de_la_lista(monkeypatch):
+    from brain import lanzador
+    monkeypatch.setattr(lanzador, "_leer", lambda: [{"id": "web", "label": "Web", "url": "https://example.com"},
+                                                    {"id": "mal", "label": "Mal", "url": "file:///etc/passwd"}])
+    abiertas = []
+    monkeypatch.setattr(lanzador.webbrowser, "open", lambda u: abiertas.append(u))
+    assert lanzador.lista() == [["web", "Web"], ["mal", "Mal"]]
+    assert lanzador.abrir("web") is True and abiertas == ["https://example.com"]
+    assert lanzador.abrir("mal") is False       # solo http y https
+    assert lanzador.abrir("cmd /c calc") is False
+    assert abiertas == ["https://example.com"]

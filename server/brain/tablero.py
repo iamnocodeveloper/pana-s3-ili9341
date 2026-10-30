@@ -21,6 +21,12 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
+try:
+    import psutil          # Windows y macOS no tienen /proc: de ahí salen CPU, RAM y uptime
+except ImportError:
+    psutil = None
+
+from brain import lanzador
 from config import cfg
 
 log = logging.getLogger("tablero")
@@ -36,6 +42,8 @@ class _Cpu:
         self.prev = None
 
     def uso(self) -> float:
+        if psutil and not Path("/proc/stat").exists():
+            return round(psutil.cpu_percent(interval=None), 1)
         try:
             v = [int(x) for x in Path("/proc/stat").read_text().split("\n", 1)[0].split()[1:]]
         except OSError:
@@ -81,6 +89,9 @@ def _temp() -> float | None:
 
 
 def _ram() -> tuple[float, float]:
+    if psutil and not Path("/proc/meminfo").exists():
+        vm = psutil.virtual_memory()
+        return round((vm.total - vm.available) / 2**30, 1), round(vm.total / 2**30, 1)
     try:
         info = dict(l.split(":", 1) for l in Path("/proc/meminfo").read_text().splitlines())
         kb = lambda k: int(info[k].split()[0])
@@ -92,11 +103,50 @@ def _ram() -> tuple[float, float]:
 
 def _uptime() -> str:
     v = _leer(Path("/proc/uptime"))
-    if not v:
+    if v:
+        s = int(float(v.split()[0]))
+    elif psutil:
+        s = int(time.time() - psutil.boot_time())
+    else:
         return ""
-    s = int(float(v.split()[0]))
     d, h = s // 86400, s % 86400 // 3600
     return f"{d} d {h} h" if d else f"{h} h {s % 3600 // 60} min"
+
+
+def _ventanas_navegador() -> int | None:
+    """Ventanas abiertas de navegadores (solo Windows). Las pestañas no se ven desde fuera del navegador."""
+    if os.name != "nt" or psutil is None:
+        return None
+    import ctypes
+    from ctypes import wintypes
+    u32 = ctypes.windll.user32
+    navegadores = {"chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe"}
+    clases = ("Chrome_WidgetWin_1", "MozillaWindowClass")
+    nombres: dict[int, str] = {}
+    cuenta = 0
+    cls = ctypes.create_unicode_buffer(64)
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def ver(hwnd, _):
+        nonlocal cuenta
+        if not u32.IsWindowVisible(hwnd) or u32.GetWindowTextLengthW(hwnd) == 0 or u32.GetWindow(hwnd, 4):  # 4 = tiene dueño
+            return True
+        u32.GetClassNameW(hwnd, cls, 64)
+        if cls.value not in clases:
+            return True
+        pid = wintypes.DWORD()
+        u32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if pid.value not in nombres:
+            try:
+                nombres[pid.value] = psutil.Process(pid.value).name().lower()
+            except psutil.Error:
+                nombres[pid.value] = ""
+        if nombres[pid.value] in navegadores:
+            cuenta += 1
+        return True
+
+    u32.EnumWindows(ver, 0)
+    return cuenta
 
 
 def _servicios() -> list[tuple[str, str]]:
@@ -315,7 +365,8 @@ async def vigilar(hub, cada_s: float = CADA_S):
                 await hub.emitir({
                     "type": "dash",
                     "sys": {"cpu": cpu.uso(), "gpu": _gpu(), "ram": round(100 * usada / total, 1) if total else 0,
-                            "ram_gb": usada, "ram_total": total, "temp": _temp(), "up": _uptime(), "host": os.environ.get("HOMELAB_NAME", socket.gethostname())},
+                            "ram_gb": usada, "ram_total": total, "temp": _temp(), "ventanas": _ventanas_navegador(), "up": _uptime(), "host": os.environ.get("HOMELAB_NAME", socket.gethostname())},
+                    "apps": lanzador.lista(),
                     "svc": [[n, ok] for (n, _), ok in zip(_servicios(), svc)],
                     "agenda": _agenda_para_placa(agenda),
                     "redes": redes,

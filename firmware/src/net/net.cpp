@@ -175,8 +175,15 @@ static void onText(const char *txt, size_t len) {
         x.ramGb = s["ram_gb"] | 0.0f;
         x.ramTotal = s["ram_total"] | 0.0f;
         x.temp = s["temp"].isNull() ? -1.0f : s["temp"].as<float>();
+        x.wins = s["ventanas"].isNull() ? -1 : s["ventanas"].as<int>();
         x.up = s["up"] | "";
         x.host = s["host"] | "";
+        x.nApps = 0;
+        for (JsonArray v : d["apps"].as<JsonArray>()) {
+            if (x.nApps == 4) break;
+            x.appId[x.nApps] = v[0] | "";
+            x.appLabel[x.nApps++] = v[1] | "";
+        }
         x.nSvc = 0;
         for (JsonArray v : d["svc"].as<JsonArray>()) {
             if (x.nSvc == 6) break;
@@ -366,7 +373,7 @@ void netBegin() {
     host = prefs.getString("host", SERVER_HOST);
     port = prefs.getUShort("port", SERVER_PORT);
     outQ = xQueueCreate(32, sizeof(String *));
-    setenv("TZ", "AST4", 1);             // República Dominicana, sin horario de verano
+    setenv("TZ", TZ_POSIX, 1);           // ver config.h
     tzset();
     xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 3, nullptr, 0);
 }

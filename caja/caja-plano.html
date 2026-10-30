@@ -1,0 +1,116 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Plano de la caja de Pana</title>
+<style>
+@page { size: 297mm 210mm; margin: 0 }
+body { margin: 0; background: #ddd; font-family: Arial, sans-serif }
+.hoja { width: 297mm; height: 210mm; margin: 6mm auto; background: #fff; page-break-after: always; overflow: hidden }
+.info { width: 297mm; min-height: 210mm; margin: 6mm auto; background: #fff; padding: 12mm; box-sizing: border-box; page-break-after: always }
+svg { display: block }
+@media print { body { background: #fff } .hoja, .info { margin: 0 } }
+</style></head><body>
+
+<section class="info"><h1>Caja de Pana · cartón duro de 3 mm</h1>
+<p><b>Imprime estas hojas en A4 horizontal al 100 %</b> (en el diálogo de impresión, «Escala: 100 %», no «Ajustar»).
+Comprueba con una regla que la barra de cada hoja mide 100 mm.</p>
+<h2>Medidas</h2>
+<ul><li>Interior: 103.0 × 60.0 × 50 mm (placa 90 × 57 + 1.5 mm de aire por lado)</li>
+<li>Exterior: 109.0 × 66.0 × 56 mm</li>
+<li>Ventana: 78 × 55 mm (centrada; bordes izq/der 15.5 / 15.5 mm, arriba/abajo 5.5 / 5.5 mm)</li></ul>
+<h2>Armado</h2>
+<ol><li>Calca y corta todas las piezas. Las zonas rojas (VENTANA y USB) también se cortan.</li>
+<li>Pega la pantalla por detrás del <b>FRENTE</b> con la zona iluminada centrada en la ventana. Fíjala con 4 TOPES en las esquinas (cinta de doble cara o pegamento caliente).</li>
+<li>Con todos los cables ya conectados y probados, sujeta el ESP32 al <b>FONDO</b> con pegamento caliente, con los USB-C hacia la ranura de <b>ABAJO</b>.</li>
+<li>Pega <b>ARRIBA</b>, <b>ABAJO</b> y los dos <b>LADOS</b> entre el frente y el fondo (las uniones a tope se refuerzan con cinta por dentro).</li>
+<li>Deja el <b>FONDO</b> pegado solo con cinta para poder abrir la caja. Las <b>PATAS</b> (opcional) van pegadas por detrás para que se apoye inclinada.</li></ol>
+<p><b>Antes de cortar:</b> mide tu placa de pantalla y tu ESP32 y confirma o cambia las medidas con el script.</p>
+</section>
+<section class="hoja"><svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210" font-family="Arial, sans-serif">
+<g transform="translate(8.00,8.00)">
+<polygon points="0,70 60,70 0,0" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="13.20" y="50.40" font-size="3.4" font-weight="bold" text-anchor="start">PATA (1/2)</text>
+<text x="13.20" y="54.00" font-size="2.8" text-anchor="start" fill="#555">60 × 70 mm</text>
+</g>
+<g transform="translate(73.00,8.00)">
+<polygon points="0,70 60,70 0,0" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="13.20" y="50.40" font-size="3.4" font-weight="bold" text-anchor="start">PATA (2/2)</text>
+<text x="13.20" y="54.00" font-size="2.8" text-anchor="start" fill="#555">60 × 70 mm</text>
+</g>
+<g transform="translate(138.00,8.00)">
+<rect width="109.00" height="66.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<rect x="15.50" y="5.50" width="78.00" height="55.00" fill="#fde2e2" stroke="#d00" stroke-width="0.4"/>
+<text x="54.50" y="34.00" font-size="3" text-anchor="middle" fill="#d00">CORTAR VENTANA 78×55</text>
+<text x="54.50" y="5.00" font-size="3.4" font-weight="bold" text-anchor="middle">FRENTE</text>
+<text x="54.50" y="8.60" font-size="2.8" text-anchor="middle" fill="#555">109 × 66 mm</text>
+</g>
+<g transform="translate(8.00,83.00)">
+<rect width="109.00" height="66.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="54.50" y="5.00" font-size="3.4" font-weight="bold" text-anchor="middle">FONDO</text>
+<text x="54.50" y="8.60" font-size="2.8" text-anchor="middle" fill="#555">109 × 66 mm</text>
+</g>
+<g transform="translate(122.00,83.00)">
+<rect width="109.00" height="50.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="54.50" y="5.00" font-size="3.4" font-weight="bold" text-anchor="middle">ARRIBA</text>
+<text x="54.50" y="8.60" font-size="2.8" text-anchor="middle" fill="#555">109 × 50 mm</text>
+</g>
+<line x1="8" y1="201" x2="108" y2="201" stroke="#000" stroke-width="0.4"/>
+<line x1="8" y1="199.5" x2="8" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="18" y1="199.5" x2="18" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="28" y1="199.5" x2="28" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="38" y1="199.5" x2="38" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="48" y1="199.5" x2="48" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="58" y1="199.5" x2="58" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="68" y1="199.5" x2="68" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="78" y1="199.5" x2="78" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="88" y1="199.5" x2="88" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="98" y1="199.5" x2="98" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="108" y1="199.5" x2="108" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<text x="112" y="202" font-size="3">← esto debe medir 100 mm con regla · hoja 1/2</text>
+</svg></section>
+<section class="hoja"><svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210" font-family="Arial, sans-serif">
+<g transform="translate(8.00,8.00)">
+<rect width="109.00" height="50.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<rect x="38.50" y="41.00" width="32.00" height="9.00" fill="#fde2e2" stroke="#d00" stroke-width="0.4"/>
+<text x="54.50" y="46.50" font-size="3" text-anchor="middle" fill="#d00">CORTAR USB 32×9</text>
+<text x="54.50" y="5.00" font-size="3.4" font-weight="bold" text-anchor="middle">ABAJO</text>
+<text x="54.50" y="8.60" font-size="2.8" text-anchor="middle" fill="#555">109 × 50 mm</text>
+</g>
+<g transform="translate(122.00,8.00)">
+<rect width="60.00" height="50.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="30.00" y="5.00" font-size="3.4" font-weight="bold" text-anchor="middle">LADO (1/2)</text>
+<text x="30.00" y="8.60" font-size="2.8" text-anchor="middle" fill="#555">60 × 50 mm</text>
+</g>
+<g transform="translate(187.00,8.00)">
+<rect width="60.00" height="50.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="30.00" y="5.00" font-size="3.4" font-weight="bold" text-anchor="middle">LADO (2/2)</text>
+<text x="30.00" y="8.60" font-size="2.8" text-anchor="middle" fill="#555">60 × 50 mm</text>
+</g>
+<g transform="translate(252.00,8.00)">
+<rect width="12.00" height="12.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="6.00" y="7.00" font-size="2.4" text-anchor="middle" fill="#555">T</text>
+</g>
+<g transform="translate(269.00,8.00)">
+<rect width="12.00" height="12.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="6.00" y="7.00" font-size="2.4" text-anchor="middle" fill="#555">T</text>
+</g>
+<g transform="translate(8.00,63.00)">
+<rect width="12.00" height="12.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="6.00" y="7.00" font-size="2.4" text-anchor="middle" fill="#555">T</text>
+</g>
+<g transform="translate(25.00,63.00)">
+<rect width="12.00" height="12.00" fill="none" stroke="#000" stroke-width="0.4"/>
+<text x="6.00" y="7.00" font-size="2.4" text-anchor="middle" fill="#555">T</text>
+</g>
+<line x1="8" y1="201" x2="108" y2="201" stroke="#000" stroke-width="0.4"/>
+<line x1="8" y1="199.5" x2="8" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="18" y1="199.5" x2="18" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="28" y1="199.5" x2="28" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="38" y1="199.5" x2="38" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="48" y1="199.5" x2="48" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="58" y1="199.5" x2="58" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="68" y1="199.5" x2="68" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="78" y1="199.5" x2="78" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="88" y1="199.5" x2="88" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="98" y1="199.5" x2="98" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<line x1="108" y1="199.5" x2="108" y2="202.5" stroke="#000" stroke-width="0.3"/>
+<text x="112" y="202" font-size="3">← esto debe medir 100 mm con regla · hoja 2/2</text>
+</svg></section>
+</body></html>

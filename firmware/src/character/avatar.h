@@ -5,14 +5,18 @@
 #ifdef PACK_AVATAR
 #include "sprites43.h"
 #define SPRITE_ZOOM 1
-// escala del personaje: AV_COL/AV_ROW llevan de pantalla al cuadro y AV_FWD del cuadro a pantalla
-// (redondeando hacia arriba). Para otra escala, cambia el 5/2 (y el 2/5) de las seis líneas
-#define AV_OUT_W (PACK_CW * 5 / 2)
-#define AV_OUT_H (PACK_CH * 5 / 2)
-#define AV_COL(c) ((c) * 2 / 5)
-#define AV_ROW(r) ((r) * 2 / 5)
-#define AV_FWD_X(n) (((n) * 5 + 1) / 2)
-#define AV_FWD_Y(n) (((n) * 5 + 1) / 2)
+// escala del personaje AV_NUM/AV_DEN (por defecto ×2,5; la de 320x240 usa 4/3 desde platformio.ini):
+// AV_COL/AV_ROW llevan de pantalla al cuadro y AV_FWD del cuadro a pantalla (redondeando hacia arriba)
+#ifndef AV_NUM
+#define AV_NUM 5
+#define AV_DEN 2
+#endif
+#define AV_OUT_W (PACK_CW * AV_NUM / AV_DEN)
+#define AV_OUT_H (PACK_CH * AV_NUM / AV_DEN)
+#define AV_COL(c) ((c) * AV_DEN / AV_NUM)
+#define AV_ROW(r) ((r) * AV_DEN / AV_NUM)
+#define AV_FWD_X(n) (((n) * AV_NUM + AV_DEN - 1) / AV_DEN)
+#define AV_FWD_Y(n) (((n) * AV_NUM + AV_DEN - 1) / AV_DEN)
 #else
 #error "Compila con -DPACK_AVATAR"
 #endif

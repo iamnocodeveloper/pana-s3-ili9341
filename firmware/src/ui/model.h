@@ -23,7 +23,10 @@ static const int MAX_GNODES = 150, MAX_GEDGES = 400, MAX_GGROUPS = 8;
 struct AgendaItem { String h, fin, title; bool now = false; };
 struct Dash {
     bool have = false;
-    float cpu = 0, gpu = -1, ram = 0, ramGb = 0, ramTotal = 0, temp = -1;
+    float cpu = 0, gpu = -1, ram = 0, ramGb = 0, ramTotal = 0, temp = -1;   // ram en %, ramGb y ramTotal en GB
+    String appId[4], appLabel[4];      // botones para abrir apps (launcher.json del servidor)
+    int nApps = 0;
+    int wins = -1;                     // ventanas de navegador abiertas (-1 = no se sabe)
     String up, host;
     String svcName[6];
     bool svcOk[6] = {};

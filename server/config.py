@@ -1,5 +1,6 @@
 """Configuración: todo sale de .env (raíz del repo) o del entorno. Sin secretos en el código."""
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -7,16 +8,24 @@ from zoneinfo import ZoneInfo
 RAIZ = Path(__file__).resolve().parent.parent
 
 
-def _cargar_env():
-    f = RAIZ / ".env"
-    if not f.exists():
-        return
-    for linea in f.read_text().splitlines():
+def _parsear_env(texto: str) -> dict[str, str]:
+    """Las líneas «CLAVE=valor». Un « #» (espacio y almohadilla) abre un comentario al final de la línea."""
+    out = {}
+    for linea in texto.splitlines():
         linea = linea.strip()
         if not linea or linea.startswith("#") or "=" not in linea:
             continue
         k, v = linea.split("=", 1)
-        os.environ.setdefault(k.strip(), v.strip())
+        out[k.strip()] = re.split(r"\s+#", v, maxsplit=1)[0].strip()
+    return out
+
+
+def _cargar_env():
+    f = RAIZ / ".env"
+    if not f.exists():
+        return
+    for k, v in _parsear_env(f.read_text(encoding="utf-8")).items():   # utf-8: en Windows el defecto es otro
+        os.environ.setdefault(k, v)
 
 
 _cargar_env()

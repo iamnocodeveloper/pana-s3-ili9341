@@ -40,6 +40,7 @@ static void serialCommands() {
             continue;
         }
 #endif
+#if HAS_AUDIO
         if (line.isEmpty() && c == 'q') {               // ¿se mueven los pines del I2S? (cambios en 20000 muestras)
             const int pins[] = {PIN_I2S_BCLK, PIN_I2S_WS, PIN_I2S_MCLK, PIN_I2S_DOUT, PIN_I2S_DIN};
             for (int p : pins) {
@@ -53,6 +54,7 @@ static void serialCommands() {
             }
             continue;
         }
+#endif
 #ifdef BOARD_175
         if (line.isEmpty() && c == 't') { extern void touchProbe(); touchProbe(); continue; }
 #endif
@@ -73,6 +75,12 @@ static void serialCommands() {
                 netSetPort(line.substring(5).toInt());
             } else if (line == "wifi reset") {
                 netResetWifi();
+#ifdef BOARD_S3_ILI9341
+            } else if (line == "cal") {                    // repite la calibración del táctil
+                lcd.touchSetup(true);
+                uiKey('R');
+#endif
+#if HAS_AUDIO
             } else if (line.startsWith("w ") || line.startsWith("r ")) {   // w <dir> <reg> <val> · r <dir> <reg> (hex)
                 int a = strtol(line.c_str() + 2, nullptr, 16);
                 int sp = line.indexOf(' ', 2), sp2 = line.indexOf(' ', sp + 1);
@@ -81,6 +89,7 @@ static void serialCommands() {
                     lgfx::i2c::writeRegister8(I2C_PORT, a, reg, strtol(line.c_str() + sp2 + 1, nullptr, 16), 0, 400000);
                 auto v = lgfx::i2c::readRegister8(I2C_PORT, a, reg, 400000);
                 Serial.printf("i2c %02x[%02x] = %02x\n", a, reg, v.has_value() ? v.value() : 0xEE);
+#endif
             } else if (line == "info") {
                 Serial.printf("fw %s · heap %u · psram libre %u · uptime %lus\n", FW_VERSION, ESP.getFreeHeap(),
                               ESP.getFreePsram(), millis() / 1000);
@@ -96,7 +105,7 @@ void setup() {
     Serial.begin(115200);
     mtx = xSemaphoreCreateMutex();
     lcd.init();                  // abre también el I2C 0 (táctil y códec)
-    lcd.setRotation(0);
+    lcd.setRotation(LCD_ROTATION);
     lcd.setBrightness(200);
     uiBegin(lcd);
     uiSplash("Pana", "despertando…");

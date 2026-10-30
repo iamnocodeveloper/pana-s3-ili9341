@@ -9,6 +9,7 @@
 | [arduinoWebSockets](https://github.com/Links2004/arduinoWebSockets) | dependencia de PlatformIO | LGPL-2.1 |
 | [WiFiManager](https://github.com/tzapu/WiFiManager) | dependencia de PlatformIO | MIT |
 | Secuencias de arranque de los paneles (CO5300, JD9365) | `firmware/include/board.h`, `firmware/src/boardp4.cpp` | tomadas de los BSP oficiales de Waveshare (`waveshare/esp32_s3_touch_amoled_1_75`, `waveshare/esp32_p4_wifi6_touch_lcd_xc`) |
+| [psutil](https://github.com/giampaolo/psutil) | dependencia de `server/` (CPU, RAM y tiempo encendido en Windows) | BSD-3-Clause |
 | Piper, whisper.cpp, Hermes Agent | se instalan aparte | ver cada proyecto |
 
 El avatar de ejemplo («Pana», el robot) se dibuja por código en `tools/demo_avatar.py` y es parte de este repositorio (MIT).

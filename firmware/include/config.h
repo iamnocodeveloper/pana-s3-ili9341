@@ -10,6 +10,25 @@
 // redonda 720x720, esfera viva con páginas de homelab, agenda y redes, y grafo (ui720.cpp)
 #define SCR_W 720
 #define SCR_H 720
+#elif defined(BOARD_S3_ILI9341)
+#define DEVICE_ID "pana-s3-ili9341"
+// apaisada 320x240: el avatar a la izquierda, lo que dice Hermes y los botones a la derecha (ui320.cpp)
+#define SCR_W 320
+#define SCR_H 240
+#endif
+
+#ifndef LCD_ROTATION
+#define LCD_ROTATION 0
+#endif
+
+// Zona horaria de la placa (formato POSIX; la hora exacta llega del servidor). «COT5» = UTC-5 sin horario de verano
+// (Colombia, Perú, Ecuador). República Dominicana: «AST4».
+#ifndef TZ_POSIX
+#if defined(BOARD_S3_ILI9341)
+#define TZ_POSIX "COT5"
+#else
+#define TZ_POSIX "AST4"
+#endif
 #endif
 
 #define PTT_MS 300                     // mantener la cara este tiempo = hablar

@@ -5,7 +5,7 @@ __pycache__/
 .pytest_cache/
 server/data/
 server/voices/
-firmware/.pio/
+.pio/
 firmware/include/secrets.h
 avatar/
 *.ppm

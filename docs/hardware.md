@@ -1,6 +1,6 @@
 # Hardware
 
-Todo lo que el firmware sabe de cada placa está en [`firmware/include/board.h`](../firmware/include/board.h) (pines, pantalla, táctil) y en un archivo `board*.cpp` (arranque, táctil y cómo se manda la imagen a la pantalla). La interfaz se elige por tamaño: `ui175.cpp` para 466×466 y `ui720.cpp` para 720×720.
+Todo lo que el firmware sabe de cada placa está en [`firmware/include/board.h`](../firmware/include/board.h) (pines, pantalla, táctil) y en un archivo `board*.cpp` (arranque, táctil y cómo se manda la imagen a la pantalla). La interfaz se elige por tamaño: `ui175.cpp` para 466×466, `ui720.cpp` para 720×720 y `ui320.cpp` para 320×240.
 
 ## Waveshare ESP32-S3-Touch-AMOLED-1.75 / 1.75C · `amoled175`
 
@@ -38,6 +38,24 @@ El DPI lee la imagen continuamente de la PSRAM, la misma en la que se dibuja. Co
 - **Repintado completo:** solo al cambiar de página o de contenido, y por franjas de 48 filas con una pausa entre ellas.
 
 Si añades algo que se mueve, repíntalo y cópialo por su cuenta en vez de forzar un repintado completo.
+
+## ESP32-S3 N8R2 + módulo ILI9341 de 3,2" (MRB3205) · `s3-ili9341`
+
+*Añadida por la adaptación de este repositorio; no es una placa Waveshare.*
+
+| Parte | Chip | Conexión |
+|---|---|---|
+| Placa | ESP32-S3 N8R2: flash de 8 MB, PSRAM quad de 2 MB, dos USB-C | USB nativo para grabar y para la consola |
+| Pantalla | ILI9341, 240×320 (se usa apaisada) | Bus paralelo de **16 bits**: `DB0`–`DB15` en los GPIO 4, 5, 6, 7, 15, 16, 17, 18, 8, 9, 10, 11, 12, 13, 21, 47 · `WR` 1 · `RS` 2 · `RST` 42 · `BL` 41 · `RD` a 3V3 · `CS` a GND |
+| Táctil | XPT2046, resistivo | SPI: `CLK` 36, `MOSI` 35, `MISO` 37, `T_CS` 40, `PEN` 39 |
+| Audio | ninguno (`HAS_AUDIO 0`) | Plan en [audio.md](audio.md) |
+
+- **Cableado completo y fotos del módulo:** [cableado-ili9341.md](cableado-ili9341.md).
+- **Imagen:** `LGFX::flush()` copia el trozo que cambió del sprite de pantalla completa (en PSRAM). El bus va a 10 MHz: con cables de puente largos no aguanta más.
+- **Táctil:** los valores del XPT2046 son en bruto; la calibración se hace la primera vez y se guarda en NVS (`touchSetup()` en `board_s3_ili9341.cpp`). La orden serie `cal` la repite.
+- **Memoria:** la tabla `partitions8.csv` da dos apps de 3,6 MB para OTA. Con las 16 animaciones del avatar el firmware ocupa unos 1,9 MB.
+- **Evita el GPIO 0, 3, 45, 46** (arranque), el 19 y 20 (USB) y el 48 (LED RGB). Un cable en el GPIO 0 deja la placa en modo descarga.
+- **Compilador:** usa la plataforma estándar `espressif32@6.9.0` (Arduino-ESP32 2.x) con `-std=gnu++17`, no la de pioarduino.
 
 ## Añadir una placa
 

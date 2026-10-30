@@ -11,7 +11,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from brain import heartbeat, hermes, llm, persona
+from brain import heartbeat, hermes, lanzador, llm, persona
 from brain.avisos_hermes import PanelHerramientas
 from brain.gate import Compuerta
 from brain.memory import Memoria
@@ -250,6 +250,10 @@ class Cerebro:
         if t.target.startswith("card:"):
             _, card_id, accion = t.target.split(":", 2)
             await self.accion_tarjeta(card_id, accion, quien)
+            return
+        if t.target.startswith("app:"):
+            if await asyncio.to_thread(lanzador.abrir, t.target[4:]):
+                await self.hub.emitir(State(emotion="happy", animation="nod"))
             return
         if t.target == "face":
             self.evento_animo("toque")

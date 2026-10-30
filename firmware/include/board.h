@@ -202,6 +202,86 @@ public:
 inline bool imuBegin() { return false; }   // la 4C no trae acelerómetro
 inline bool imuMoved() { return false; }
 
+#elif defined(BOARD_S3_ILI9341)
+// ESP32-S3 N8R2 con un módulo de 3,2" ILI9341 (MRB3205): 320x240 apaisada, bus paralelo de 16 bits y táctil
+// resistivo XPT2046 por SPI. Sin altavoz ni micrófono. Cableado en docs/cableado-ili9341.md.
+#define HAS_AUDIO 0
+#define LCD_ROTATION 1       // apaisada; con 3 se da la vuelta si queda al revés
+
+class LGFX : public lgfx::LGFX_Device {
+    lgfx::Panel_ILI9341 _panel;
+    lgfx::Bus_Parallel16 _bus;
+    lgfx::Light_PWM _light;
+    lgfx::Touch_XPT2046 _touch;
+
+public:
+    static const int WIDTH = 320, HEIGHT = 240;
+    LGFX() {
+        {
+            auto b = _bus.config();
+            b.freq_write = 10000000;    // las 16 líneas por cables de puente no aguantan más
+            b.pin_wr = 1;
+            b.pin_rd = -1;              // RD va fijo a 3V3: no se lee la pantalla
+            b.pin_rs = 2;               // RS = DC
+            b.pin_d0 = 4;  b.pin_d1 = 5;  b.pin_d2 = 6;  b.pin_d3 = 7;
+            b.pin_d4 = 15; b.pin_d5 = 16; b.pin_d6 = 17; b.pin_d7 = 18;
+            b.pin_d8 = 8;  b.pin_d9 = 9;  b.pin_d10 = 10; b.pin_d11 = 11;
+            b.pin_d12 = 12; b.pin_d13 = 13; b.pin_d14 = 21; b.pin_d15 = 47;
+            _bus.config(b);
+            _panel.setBus(&_bus);
+        }
+        {
+            auto p = _panel.config();
+            p.pin_cs = -1;              // CS va fijo a GND
+            p.pin_rst = 42;
+            p.pin_busy = -1;
+            p.panel_width = 240;
+            p.panel_height = 320;
+            p.offset_x = 0;
+            p.offset_y = 0;
+            p.readable = false;
+            p.invert = false;
+            p.rgb_order = false;
+            p.dlen_16bit = true;
+            p.bus_shared = false;
+            _panel.config(p);
+        }
+        {
+            auto l = _light.config();
+            l.pin_bl = 41;
+            l.invert = false;
+            l.freq = 5000;
+            l.pwm_channel = 7;
+            _light.config(l);
+            _panel.setLight(&_light);
+        }
+        {
+            auto t = _touch.config();
+            t.x_min = 0;   t.x_max = 239;
+            t.y_min = 0;   t.y_max = 319;
+            t.pin_int = 39;             // PEN
+            t.bus_shared = false;
+            t.offset_rotation = 0;
+            t.spi_host = SPI3_HOST;
+            t.freq = 1000000;
+            t.pin_sclk = 36;
+            t.pin_mosi = 35;
+            t.pin_miso = 37;
+            t.pin_cs = 40;
+            _touch.config(t);
+            _panel.setTouch(&_touch);
+        }
+        setPanel(&_panel);
+    }
+    // carga la calibración del táctil (NVS) o, la primera vez y con force, pide tocar las cuatro cruces.
+    // Va después de setRotation(): la calibración vale para esa orientación (board_s3_ili9341.cpp)
+    void touchSetup(bool force);
+    // copia el trozo (x, y, w, h) del sprite a la pantalla; el sprite se indexa con su propio ancho
+    void flush(LGFX_Sprite &s, int x, int y, int w, int h);
+};
+inline bool imuBegin() { return false; }
+inline bool imuMoved() { return false; }
+
 #else
-#error "Elige la placa en platformio.ini: -DBOARD_175 (AMOLED 1.75) o -DBOARD_P4 (P4 4C)"
+#error "Elige la placa en platformio.ini: -DBOARD_175 (AMOLED 1.75), -DBOARD_P4 (P4 4C) o -DBOARD_S3_ILI9341"
 #endif
