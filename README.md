@@ -51,7 +51,8 @@ Probado en el hardware de abajo:
 | **Avatar animado** | 16 estados (listo, pensando, hablando, sin conexión…). Saluda al tocarle la cara. |
 | **Reloj y fecha** | En tu zona horaria; el servidor manda la hora y la placa la mantiene. |
 | **Datos de tu PC con Windows** | CPU, RAM, tiempo encendido y cuántas ventanas de navegador tienes abiertas. |
-| **Botones para abrir apps** | YouTube y el navegador de serie; hasta 4 en `server/launcher.json`. |
+| **Botones para abrir apps** | YouTube y el navegador de serie; hasta 8 en `server/launcher.json` (4 en la página principal). |
+| **Páginas que se deslizan** | Principal, **Apps**, **Mi PC** (CPU, RAM y gráfica), **Hoy** (agenda y redes) y **Hermes** (estado y última respuesta). Vuelve sola a la principal a los 60 s. |
 | **Wi-Fi sin tocar código** | La placa abre la red `Pana-Setup`: pones tu Wi-Fi y la IP del servidor desde el móvil. |
 | **Tarjetas y confirmaciones** | Botones, avisos y burbujas de texto, listos para cuando conectes un agente. |
 

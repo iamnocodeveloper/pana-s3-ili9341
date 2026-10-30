@@ -26,7 +26,8 @@ OJOS = {"izq": (508, 322), "der": (690, 306)}      # centro de cada ojo en la im
 BOCA = (604, 464)
 HOMBRO = {"izq": (478, 655), "der": (884, 650)}
 TAZA_MANO = (330, 730)                  # mano que sostiene la taza (centro)
-CHUNK_IZQ = [(256, 500), (498, 500), (504, 700), (498, 832), (256, 832)]
+# la mano con la taza y el vapor; la manga del abrigo (x 400-500, y 540-640) se queda en el cuerpo
+CHUNK_IZQ = [(256, 640), (300, 640), (300, 500), (400, 500), (400, 640), (500, 640), (504, 700), (498, 832), (256, 832)]
 CHUNK_DER = [(676, 650), (905, 570), (990, 620), (990, 965), (676, 965)]
 
 
@@ -197,7 +198,7 @@ def brazo_con_mano(im, lado, tipo, muneca, rot=0.0):
 def taza_en_mano(im, trozo, dx, dy, rot):
     """Vuelve a poner la mano con la taza (la de la imagen) desplazada y girada; la manga la une al hombro."""
     cx, cy = TAZA_MANO[0] + dx, TAZA_MANO[1] + dy
-    manga(im, HOMBRO["izq"], (cx + 30, cy - 10), "izq")
+    manga(im, HOMBRO["izq"], (cx + 30, cy - 10), "izq", ancho=84 if dy < -100 else 104)
     t = ImageChops.offset(trozo, round(dx), round(dy))
     t = t.rotate(rot, center=(round(cx + 50), round(cy)), resample=Image.BILINEAR)
     im.alpha_composite(t)

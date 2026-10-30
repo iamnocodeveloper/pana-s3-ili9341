@@ -1,5 +1,6 @@
 // Composición apaisada de 320x240 (ESP32-S3 + ILI9341): el avatar con su cartel a la izquierda y, a la derecha,
-// lo que haya que decir: confirmación, tarjeta, burbuja de Hermes o, en reposo, los datos de tu ordenador.
+// lo que haya que decir: confirmación, tarjeta, burbuja de Hermes o, en reposo, páginas que se cambian
+// deslizando el dedo: principal, Apps, Mi PC, Hoy (agenda y redes) y Hermes.
 // Dos sprites en PSRAM: scr (la pantalla entera) y avs (el avatar, que se repinta solo donde cambia).
 #ifdef BOARD_S3_ILI9341
 #include <ArduinoJson.h>
@@ -40,6 +41,20 @@ static Box optBox(int i, int n) { return {PX, SCR_H - (n - i) * 38, PW, 34}; }  
 static Box appBox(int i, int n) {
     int rows = (n + 1) / 2, h = rows == 1 ? 40 : 30, w = (PW - 6) / 2;
     return {PX + (i % 2) * (w + 6), SCR_H - 2 - (rows - i / 2) * h - (rows - 1 - i / 2) * 4, w, h};
+}
+enum Page : uint8_t { PG_MAIN, PG_APPS, PG_PC, PG_DAY, PG_HERMES, NPG };
+static int page = PG_MAIN;
+static uint32_t pageAt = 0;                       // último toque o cambio de página (a los 60 s vuelve a la principal)
+static const int MAIN_APPS = 4;                   // botones de apps en la página principal
+static float cpuHist[40];                         // la CPU de los últimos ~3 minutos (un dato cada 5 s)
+static int nHist = 0;
+static uint32_t histVersion = 0;
+static String lastReply, lastTools[3];            // para la página de Hermes
+static int nLastTools = 0;
+// rejilla de la página de Apps: dos columnas, hasta cuatro filas
+static Box gridBox(int i) {
+    int w = (PW - 6) / 2, h = 40;
+    return {PX + (i % 2) * (w + 6), 44 + (i / 2) * (h + 4), w, h};
 }
 static int pressedApp = -1;                       // el botón que se acaba de tocar, resaltado un momento
 static uint32_t pressedAt = 0;
@@ -86,14 +101,16 @@ static void drawAvatar() {
 }
 
 // --- panel de la derecha -----------------------------------------------------------------------
-static void drawStatus(Model &m) {
+static void drawStatus(Model &m, bool dots) {
     useFont(t43xs);
     scr.setTextDatum(textdatum_t::top_left);
     scr.fillCircle(PX + 4, 9, 4, m.wifi ? GREEN : RED);
     scr.setTextColor(MUTED, BG);
     scr.drawString("Wi-Fi", PX + 12, 1);
-    scr.fillCircle(PX + 70, 9, 4, m.server ? GREEN : (m.wifi ? AMBER : DIM));
-    scr.drawString("Servidor", PX + 78, 1);
+    scr.fillCircle(PX + 62, 9, 4, m.server ? GREEN : (m.wifi ? AMBER : DIM));
+    scr.drawString("Servidor", PX + 70, 1);
+    if (dots)                                     // en qué página estás
+        for (int i = 0; i < NPG; i++) scr.fillCircle(PX + PW - NPG * 8 + i * 8 + 4, 9, i == page ? 3 : 2, i == page ? INK : DIM);
 }
 
 static uint32_t loadColor(float pct) { return pct < 60 ? GREEN : pct < 85 ? AMBER : RED; }
@@ -164,7 +181,8 @@ static void drawIdle(Model &m) {
     snprintf(b, sizeof(b), "%.1f / %.0f GB", d.ramGb, d.ramTotal);
     meter("RAM", d.ram, b, 108);
     int y = 148;
-    const int limit = d.nApps ? appBox(0, d.nApps).y - 4 : SCR_H;    // las filas de datos acaban donde empiezan los botones
+    const int na = min(d.nApps, MAIN_APPS);
+    const int limit = na ? appBox(0, na).y - 4 : SCR_H;    // las filas de datos acaban donde empiezan los botones
     useFont(t43xs);
     scr.setTextDatum(textdatum_t::top_left);
     auto row = [&](const String &s, uint32_t color) {
@@ -186,9 +204,133 @@ static void drawIdle(Model &m) {
         row(b, MUTED);
     }
     if (d.up.length()) row("Encendido " + d.up, MUTED);
+    for (int i = 0; i < na; i++) {
+        bool on = i == pressedApp;
+        button(appBox(i, na), d.appLabel[i], on ? TEAL : SEG, on ? BG : INK);
+    }
+}
+
+// --- las otras páginas -------------------------------------------------------------------------------
+static void pageTitle(const String &t) {
+    useFont(t43xs);
+    scr.setTextColor(TEAL, BG);
+    scr.setTextDatum(textdatum_t::top_left);
+    scr.drawString(ellipsize(scr, t, PW - 50), PX, 22);
+}
+
+static void drawApps(Model &m) {
+    const Dash &d = m.dash;
+    pageTitle("Apps");
+    useFont(t43xs);
+    scr.setTextColor(MUTED, BG);
+    if (!d.nApps) {
+        static String ls[5];
+        int n = wrap(scr, "Sin apps. Añádelas en server/launcher.json (hasta 8).", PW, ls, 5);
+        for (int i = 0; i < n; i++) scr.drawString(ls[i], PX, 48 + i * 21);
+        return;
+    }
     for (int i = 0; i < d.nApps; i++) {
         bool on = i == pressedApp;
-        button(appBox(i, d.nApps), d.appLabel[i], on ? TEAL : SEG, on ? BG : INK);
+        button(gridBox(i), d.appLabel[i], on ? TEAL : SEG, on ? BG : INK);
+    }
+}
+
+static void drawPC(Model &m) {
+    const Dash &d = m.dash;
+    pageTitle(d.host.length() ? "Mi PC · " + d.host : String("Mi PC"));
+    if (!d.have) { useFont(t43xs); scr.setTextColor(MUTED, BG); scr.drawString("Esperando datos…", PX, 48); return; }
+    char b[32];
+    snprintf(b, sizeof(b), "%.0f %%", d.cpu);
+    meter("CPU", d.cpu, b, 42);
+    snprintf(b, sizeof(b), "%.1f / %.0f GB", d.ramGb, d.ramTotal);
+    meter("RAM", d.ram, b, 78);
+    const int gy = 114, gh = 40;                                       // gráfica de la CPU
+    scr.fillRoundRect(PX, gy, PW, gh, 4, SEG);
+    for (int i = 1; i < nHist; i++) {
+        int x0 = PX + (i - 1) * (PW - 1) / 39, x1 = PX + i * (PW - 1) / 39;
+        int y0 = gy + gh - 3 - (int)(cpuHist[i - 1] * (gh - 6) / 100), y1 = gy + gh - 3 - (int)(cpuHist[i] * (gh - 6) / 100);
+        scr.drawLine(x0, y0, x1, y1, loadColor(cpuHist[i]));
+    }
+    useFont(t43xs);
+    scr.setTextDatum(textdatum_t::top_left);
+    int y = 160;
+    auto row = [&](const String &s, uint32_t c) { if (y + 18 > SCR_H) return; scr.setTextColor(c, BG); scr.drawString(ellipsize(scr, s, PW), PX, y); y += 21; };
+    if (d.wins >= 0) { snprintf(b, sizeof(b), "Navegador: %d %s", d.wins, d.wins == 1 ? "ventana" : "ventanas"); row(b, INK); }
+    String t;
+    if (d.temp >= 0) t += String("Temp ") + (int)d.temp + " °C  ";
+    if (d.gpu >= 0) t += String("GPU ") + (int)d.gpu + " %";
+    if (t.length()) row(t, MUTED);
+    if (d.up.length()) row("Encendido " + d.up, MUTED);
+}
+
+static String miles(long v) {
+    if (v >= 1000000) return String(v / 1000000.0, 1) + " M";
+    if (v >= 10000) return String(v / 1000) + " mil";
+    return String(v);
+}
+
+static void drawDay(Model &m) {
+    const Dash &d = m.dash;
+    pageTitle("Hoy");
+    useFont(t43xs);
+    scr.setTextDatum(textdatum_t::top_left);
+    int y = 44;
+    if (!d.agendaOk) {
+        scr.setTextColor(MUTED, BG);
+        static String ls[5];
+        int n = wrap(scr, d.agendaWhy.length() ? d.agendaWhy : String("Sin agenda. Pon AGENDA_ICS_URL en el .env del servidor."), PW, ls, 5);
+        for (int i = 0; i < n; i++) scr.drawString(ls[i], PX, y + i * 21);
+    } else if (!d.nAgenda) {
+        scr.setTextColor(MUTED, BG);
+        scr.drawString("Nada en la agenda", PX, y);
+    } else {
+        for (int i = 0; i < min(d.nAgenda, 5); i++) {
+            scr.setTextColor(d.agenda[i].now ? AMBER : MUTED, BG);
+            scr.drawString(d.agenda[i].h, PX, y);
+            scr.setTextColor(d.agenda[i].now ? INK : MUTED, BG);
+            scr.drawString(ellipsize(scr, d.agenda[i].title, PW - 46), PX + 46, y);
+            y += 21;
+        }
+        if (d.agendaLeft > 0) { scr.setTextColor(DIM, BG); scr.drawString(String("+ ") + d.agendaLeft + " más", PX, y); }
+    }
+    int by = SCR_H - 2 - 21 * ((d.yt ? 1 : 0) + (d.ig ? 1 : 0));
+    if (d.yt) { scr.setTextColor(INK, BG); scr.drawString("YouTube " + miles(d.ytSubs), PX, by); by += 21; }
+    if (d.ig) { scr.setTextColor(INK, BG); scr.drawString("Instagram " + miles(d.igFollowers), PX, by); }
+}
+
+static void drawHermes(Model &m) {
+    const Dash &d = m.dash;
+    pageTitle("Hermes");
+    useFont(t43xs);
+    scr.setTextDatum(textdatum_t::top_left);
+    int y = 44;
+    scr.setTextColor(INK, BG);
+    scr.drawString("Cerebro: " + (d.brain.length() ? d.brain : String("?")), PX, y);
+    y += 21;
+    for (int i = 0; i < d.nSvc && y < 150; i++) {                       // Hermes, Whisper… vivos o no
+        if (d.brain == "hermes" && (d.svcName[i] == "LLM" || d.svcName[i] == "Rápido")) continue;   // no se usan con Hermes
+        scr.fillCircle(PX + 4, y + 9, 4, d.svcOk[i] ? GREEN : RED);
+        scr.setTextColor(MUTED, BG);
+        scr.drawString(ellipsize(scr, d.svcName[i], PW - 16), PX + 14, y);
+        y += 21;
+    }
+    scr.setTextColor(TEAL, BG);
+    scr.drawString(nLastTools ? "Última tarea" : "Última respuesta", PX, y + 2);
+    y += 23;
+    scr.setTextColor(INK, BG);
+    static String ls[3];
+    String txt = nLastTools ? lastTools[0] : (lastReply.length() ? lastReply : String("Aún nada. Escríbele en localhost:8770."));
+    int n = wrap(scr, txt, PW, ls, 3);
+    for (int i = 0; i < n && y + 18 <= SCR_H; i++, y += 19) scr.drawString(ls[i], PX, y);
+}
+
+static void drawPage(Model &m) {
+    switch (page) {
+    case PG_APPS: drawApps(m); break;
+    case PG_PC: drawPC(m); break;
+    case PG_DAY: drawDay(m); break;
+    case PG_HERMES: drawHermes(m); break;
+    default: drawIdle(m);
     }
 }
 
@@ -247,11 +389,12 @@ static void drawConfirm(Model &m, uint32_t now) {
 static void drawPanel(Model &m, uint32_t now) {
     scr.fillRect(PX - 4, 0, SCR_W - PX + 4, SCR_H, BG);
     scr.drawFastVLine(PX - 5, 6, SCR_H - 12, LINE);
-    drawStatus(m);
+    bool idle = !m.confirm && !m.card && !m.bubble;
+    drawStatus(m, idle);
     if (m.confirm) drawConfirm(m, now);
     else if (m.card) drawCard(m);
     else if (m.bubble) drawBubble(m);
-    else drawIdle(m);
+    else drawPage(m);
     lcd->flush(scr, PX - 5, 0, SCR_W - PX + 5, SCR_H);
     lastPanel = now;
 }
@@ -290,12 +433,19 @@ static void sendTouch(const char *target, int x, int y, const char *gesture) {
     send(d);
 }
 
-static struct { bool down = false; int x = 0, y = 0; uint32_t t0 = 0; } tch;
+static struct { bool down = false; int x = 0, y = 0, x0 = 0, y0 = 0; uint32_t t0 = 0; } tch;
+
+static void setPage(int p, uint32_t now) {
+    p = constrain(p, 0, NPG - 1);
+    if (p != page) { page = p; drawnVersion = UINT32_MAX; }
+    pageAt = now;
+}
 
 static void handleTouch(Model &m, uint32_t now) {
     lgfx::touch_point_t tp;
     if (lcd->getTouch(&tp)) {
-        if (!tch.down) { tch.down = true; tch.t0 = now; }
+        if (!tch.down) { tch.down = true; tch.t0 = now; tch.x0 = tp.x; tch.y0 = tp.y; }
+        pageAt = now;
         tch.x = tp.x; tch.y = tp.y;
         return;
     }
@@ -320,9 +470,15 @@ static void handleTouch(Model &m, uint32_t now) {
                 sendTouch(t.c_str(), x, y, "tap");
                 return;
             }
-    if (!m.bubble)                                   // en reposo, los botones de apps
-        for (int i = 0; i < m.dash.nApps; i++)
-            if (inside(appBox(i, m.dash.nApps), x, y)) {
+    int dx = x - tch.x0, dy = y - tch.y0;
+    if (!m.card && !m.bubble && abs(dx) > 50 && abs(dy) < 60) {      // deslizar cambia de página
+        setPage(page + (dx < 0 ? 1 : -1), now);
+        return;
+    }
+    if (!m.bubble && (page == PG_MAIN || page == PG_APPS)) {         // en reposo, los botones de apps
+        int n = page == PG_MAIN ? min(m.dash.nApps, MAIN_APPS) : m.dash.nApps;
+        for (int i = 0; i < n; i++)
+            if (inside(page == PG_MAIN ? appBox(i, n) : gridBox(i), x, y)) {
                 pressedApp = i;
                 pressedAt = now;
                 drawnVersion = UINT32_MAX;               // repintar ya: el botón se ilumina
@@ -330,6 +486,7 @@ static void handleTouch(Model &m, uint32_t now) {
                 sendTouch(t.c_str(), x, y, "tap");
                 return;
             }
+    }
     if (x < AVW) {                                   // la cara saluda
         face.play(S_WAVE, 1);
         sendTouch("face", x, y, gesture);
@@ -385,6 +542,19 @@ void uiFrame(uint32_t now) {
     if (m.confirm && now > m.confirmUntil) { m.confirm = false; m.version++; }
 
     if (pressedApp >= 0 && now - pressedAt > 400) { pressedApp = -1; drawnVersion = UINT32_MAX; }
+
+    if (m.dash.have && m.dash.version != histVersion) {                   // un punto más en la gráfica de la CPU
+        histVersion = m.dash.version;
+        if (nHist == 40) { memmove(cpuHist, cpuHist + 1, 39 * sizeof(float)); nHist = 39; }
+        cpuHist[nHist++] = constrain(m.dash.cpu, 0.0f, 100.0f);
+    }
+    if (m.bubble && m.bubbleText.length()) { lastReply = m.bubbleText; nLastTools = 0; }
+    if (m.card && m.cardKind == "tools" && m.nTools) {
+        nLastTools = min(m.nTools, 3);
+        for (int i = 0; i < nLastTools; i++) lastTools[i] = m.tools[i].name + ": " + m.tools[i].detail;
+    }
+    if ((m.confirm || m.card || m.bubble) && page != PG_MAIN) { page = PG_MAIN; pageAt = now; drawnVersion = UINT32_MAX; }
+    if (page != PG_MAIN && !tch.down && now - pageAt > 60000) { page = PG_MAIN; drawnVersion = UINT32_MAX; }   // vuelve sola
 
     drawAvatar();
 

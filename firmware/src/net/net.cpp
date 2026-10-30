@@ -178,9 +178,10 @@ static void onText(const char *txt, size_t len) {
         x.wins = s["ventanas"].isNull() ? -1 : s["ventanas"].as<int>();
         x.up = s["up"] | "";
         x.host = s["host"] | "";
+        x.brain = d["brain"] | "";
         x.nApps = 0;
         for (JsonArray v : d["apps"].as<JsonArray>()) {
-            if (x.nApps == 4) break;
+            if (x.nApps == 8) break;
             x.appId[x.nApps] = v[0] | "";
             x.appLabel[x.nApps++] = v[1] | "";
         }
